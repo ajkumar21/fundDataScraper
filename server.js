@@ -26,6 +26,7 @@ var server = app.listen(process.env.PORT || 8080, function () {
 });
 
 app.get("/fund", async (req, res) => {
+  console.log(req.body.url);
   const fund = await scraper.getFundData(req.body.url);
   res.status(200).send(fund);
 });

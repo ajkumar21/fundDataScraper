@@ -61,7 +61,7 @@ module.exports = {
       data["holdings"] = holdings;
       return data;
     } catch {
-      return "None";
+      return "Error: Fund data not retrieved";
     }
   },
 
@@ -80,7 +80,7 @@ module.exports = {
         .trim();
       return data;
     } catch {
-      return "None";
+      return "Error: Stock data not retrieved";
     }
   },
 };
