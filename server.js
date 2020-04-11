@@ -26,12 +26,11 @@ var server = app.listen(process.env.PORT || 8080, function () {
 });
 
 app.get("/fund", async (req, res) => {
-  console.log(req.body.url);
-  const fund = await scraper.getFundData(req.body.url);
+  const fund = await scraper.getFundData(req.headers.link);
   res.status(200).send(fund);
 });
 
 app.get("/stock", async (req, res) => {
-  const stock = await scraper.getStockData(req.body.url);
+  const stock = await scraper.getStockData(req.headers.link);
   res.status(200).send(stock);
 });
