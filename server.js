@@ -53,20 +53,31 @@ var server = app.listen(process.env.PORT || 8080, function () {
   console.log("App now running on port", port);
 });
 
-app.get("/fund", async (req, res) => {
-  const fund = await scraper.getFundData(req.headers.link);
-  if (fund.data.name) {
-    res.status(200).send(fund);
+app.get("/fund", (req, res) => {
+  if (req.headers["link"]) {
+    scraper.getFundData(req.headers.link).then((fund) => {
+      console.log(fund);
+      if (fund.name) {
+        res.status(200).send(fund);
+      } else {
+        res.status(404).send("Not Found");
+      }
+    });
   } else {
-    res.status(404).send("Not Found");
+    res.status("400").send("Bad Request: Link not found in header");
   }
 });
 
-app.get("/stock", async (req, res) => {
-  const stock = await scraper.getStockData(req.headers.link);
-  if (stock.data.name) {
-    res.status(200).send(stock);
+app.get("/stock", (req, res) => {
+  if (req.headers["link"]) {
+    scraper.getStockData(req.headers.link).then((stock) => {
+      if (stock.name) {
+        res.status(200).send(stock);
+      } else {
+        res.status(404).send("Not Found");
+      }
+    });
   } else {
-    res.status(404).send("Not Found");
+    res.status("400").send("Bad Request: Link not found in header");
   }
 });
