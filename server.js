@@ -16,17 +16,41 @@ MongoClient.connect(connectionString, {
     const fundCollection = db.collection("funds");
 
     app.post("/fundDB", (req, res) => {
-      fundCollection
-        .insertOne(req.body.link)
-        .then((result) => console.log(result))
-        .catch((err) => console.error(err));
+      if (req.headers.link) {
+        fundCollection.insertOne({ link: req.headers.link }, (err, result) => {
+          if (err) {
+            res.status(400).send(err);
+          } else {
+            res.status(200).send(result);
+          }
+        });
+      } else {
+        res.status(400).send("Link not found in headers");
+      }
     });
 
     app.delete("/fundDB", (req, res) => {
-      fundCollection
-        .deleteOne(req.body.link)
-        .then((result) => console.log(result))
-        .catch((err) => console.error(err));
+      if (req.headers.link) {
+        fundCollection.deleteOne({ link: req.headers.link }, (err, result) => {
+          if (err) {
+            res.status(400).send(err);
+          } else {
+            res.status(200).send(result);
+          }
+        });
+      } else {
+        res.status(400).send("Link not found in headers");
+      }
+    });
+
+    app.get("/fundDB", (req, res) => {
+      fundCollection.find().toArray((err, items) => {
+        if (err) {
+          res.status(400).send(err);
+        } else {
+          res.status(200).send(items);
+        }
+      });
     });
   })
   .catch((err) => console.error(err));
