@@ -78,6 +78,8 @@ module.exports = {
         .text()
         .replace(/\s+/g, " ")
         .trim();
+      data["changeDirection"] =
+        $(".change").eq(0).attr()["class"] === "negative change" ? "-" : "+";
       return data;
     } catch {
       return "Error: Stock data not retrieved";

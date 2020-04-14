@@ -11,7 +11,7 @@ MongoClient.connect(connectionString, {
   useUnifiedTopology: true,
 })
   .then((client) => {
-    console.log("Connect to mongoDB");
+    console.log("Connected to mongoDB");
     const db = client.db("fundData");
     const fundCollection = db.collection("funds");
 
