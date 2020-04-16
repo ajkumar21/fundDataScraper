@@ -6,20 +6,28 @@ const MongoClient = require("mongodb").MongoClient;
 
 const redis = require("redis");
 //May need URL, check heroku docs
-const cache = redis.createClient();
+const port = process.env.REDIS_PORT;
+const host = process.env.REDIS_HOST;
+const password = process.env.REDIS_PW;
+const cache = redis.createClient({ port, host, password });
 
 cache.on("connect", () => console.log("Redis connected"));
 cache.on("error", (err) => console.log(`Redis connection failed: ${err}`));
+
+const TIME_IN_CACHE = 60 * 60; //1hr in seconds
 
 //Create middleware cache for endpoints
 const getFromCache = (req, res, next) => {
   const key = `${req.url}${req.headers.link}`;
   cache.get(key, (err, result) => {
     if (err == null && result != null) {
-      res.send("from cache");
+      res.send(JSON.parse(result));
+      console.log("from cache");
     } else {
+      //if not found use next callback - which will be the axios call
       next();
     }
+    ``;
   });
 };
 
@@ -105,7 +113,7 @@ app.get("/fund", getFromCache, (req, res) => {
         if (fund.name) {
           res.status(200).send(fund);
           const key = `${req.url}${fundLink}`;
-          cache.setex(key, 60, JSON.stringify(fund));
+          cache.setex(key, TIME_IN_CACHE, JSON.stringify(fund));
         } else {
           res.status(404).send("Not Found");
         }
@@ -116,11 +124,14 @@ app.get("/fund", getFromCache, (req, res) => {
   }
 });
 
-app.get("/stock", (req, res) => {
+app.get("/stock", getFromCache, (req, res) => {
   if (req.headers["link"]) {
-    scraper.getStockData(req.headers.link).then((stock) => {
+    const fundLink = req.headers.link;
+    scraper.getStockData(fundLink).then((stock) => {
       if (stock.name) {
         res.status(200).send(stock);
+        const key = `${req.url}${fundLink}`;
+        cache.setex(key, TIME_IN_CACHE, JSON.stringify(stock));
       } else {
         res.status(404).send("Not Found");
       }
