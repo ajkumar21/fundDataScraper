@@ -4,6 +4,25 @@ var scraper = require("./scraper");
 var app = express();
 const MongoClient = require("mongodb").MongoClient;
 
+const redis = require("redis");
+//May need URL, check heroku docs
+const cache = redis.createClient();
+
+cache.on("connect", () => console.log("Redis connected"));
+cache.on("error", (err) => console.log(`Redis connection failed: ${err}`));
+
+//Create middleware cache for endpoints
+const getFromCache = (req, res, next) => {
+  const key = `${req.url}${req.headers.link}`;
+  cache.get(key, (err, result) => {
+    if (err == null && result != null) {
+      res.send("from cache");
+    } else {
+      next();
+    }
+  });
+};
+
 const connectionString =
   "mongodb+srv://admin:admin@fundmanagerdata-zei2j.mongodb.net/test?retryWrites=true&w=majority";
 
@@ -11,7 +30,7 @@ MongoClient.connect(connectionString, {
   useUnifiedTopology: true,
 })
   .then((client) => {
-    console.log("Connected to mongoDB");
+    console.log("MongoDB connected");
     const db = client.db("fundData");
     const fundCollection = db.collection("funds");
 
@@ -53,7 +72,7 @@ MongoClient.connect(connectionString, {
       });
     });
   })
-  .catch((err) => console.error(err));
+  .catch((err) => console.error(`MongoDB connection failed: ${err}`));
 
 app.use(
   bodyParser.urlencoded({
@@ -77,16 +96,21 @@ var server = app.listen(process.env.PORT || 8080, function () {
   console.log("App now running on port", port);
 });
 
-app.get("/fund", (req, res) => {
+app.get("/fund", getFromCache, (req, res) => {
   if (req.headers["link"]) {
-    scraper.getFundData(req.headers.link).then((fund) => {
-      console.log(fund);
-      if (fund.name) {
-        res.status(200).send(fund);
-      } else {
-        res.status(404).send("Not Found");
-      }
-    });
+    const fundLink = req.headers.link;
+    scraper
+      .getFundData(fundLink)
+      .then((fund) => {
+        if (fund.name) {
+          res.status(200).send(fund);
+          const key = `${req.url}${fundLink}`;
+          cache.setex(key, 60, JSON.stringify(fund));
+        } else {
+          res.status(404).send("Not Found");
+        }
+      })
+      .catch((err) => console.log(err));
   } else {
     res.status("400").send("Bad Request: Link not found in header");
   }
