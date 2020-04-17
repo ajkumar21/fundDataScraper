@@ -154,12 +154,14 @@ app.get("/marketData/:symbol", getFromCache, (req, res) => {
   axios
     .get(apiUrl)
     .then((market) => {
-      const symbolData = market.data["Time Series (1min)"];
-      const latestSymbolData = symbolData[Object.keys(symbolData)[0]];
-      res.status(market.status).send(latestSymbolData);
       //1 min lag for live data
-      if (market.status == 200) {
+      if (market.data["Time Series (1min)"]) {
+        const symbolData = market.data["Time Series (1min)"];
+        const latestSymbolData = symbolData[Object.keys(symbolData)[0]];
+        res.status("200").send(latestSymbolData);
         cache.setex(req.url, 60, JSON.stringify(latestSymbolData));
+      } else {
+        res.status("404").send("ERROR: Invalid symbol. Cannot find stock data");
       }
     })
     .catch((err) => console.log(err));
