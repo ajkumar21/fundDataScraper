@@ -166,3 +166,22 @@ app.get("/marketData/:symbol", getFromCache, (req, res) => {
     })
     .catch((err) => console.log(err));
 });
+
+app.get("/marketData/history/:symbol", getFromCache, (req, res) => {
+  const functionApi = "TIME_SERIES_DAILY";
+  const apiUrl = `${baseUrl}${functionApi}&symbol=${req.params.symbol}&apikey=${apiKey}`;
+
+  axios
+    .get(apiUrl)
+    .then((market) => {
+      //1 min lag for live data
+      if (market.data["Time Series (Daily)"]) {
+        const symbolData = market.data["Time Series (Daily)"];
+        res.status("200").send(symbolData);
+        cache.setex(req.url, 60, JSON.stringify(symbolData));
+      } else {
+        res.status("404").send("ERROR: Invalid symbol. Cannot find stock data");
+      }
+    })
+    .catch((err) => console.log(err));
+});
