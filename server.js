@@ -145,40 +145,57 @@ app.get("/stock", getFromCache, (req, res) => {
   }
 });
 
-const baseUrl = "https://www.alphavantage.co/query?function=";
-const apiKey = process.env.MARKET_API_KEY;
+// const baseUrl = "https://www.alphavantage.co/query?function=";
+// const apiKey = process.env.MARKET_API_KEY;
+
+// app.get("/marketData/:symbol", getFromCache, (req, res) => {
+//   const functionApi = "TIME_SERIES_INTRADAY";
+//   const apiUrl = `${baseUrl}${functionApi}&symbol=${req.params.symbol}&interval=1min&apikey=${apiKey}`;
+//   axios
+//     .get(apiUrl)
+//     .then((market) => {
+//       //1 min lag for live data
+//       if (market.data["Time Series (1min)"]) {
+//         const symbolData = market.data["Time Series (1min)"];
+//         const latestSymbolData = symbolData[Object.keys(symbolData)[0]];
+//         res.status("200").send(latestSymbolData);
+//         cache.setex(req.url, 60, JSON.stringify(latestSymbolData));
+//       } else {
+//         res.status("404").send("ERROR: Invalid symbol. Cannot find stock data");
+//       }
+//     })
+//     .catch((err) => console.log(err));
+// });
+
+// app.get("/marketData/history/:symbol", getFromCache, (req, res) => {
+//   const functionApi = "TIME_SERIES_DAILY";
+//   const apiUrl = `${baseUrl}${functionApi}&symbol=${req.params.symbol}&apikey=${apiKey}`;
+
+//   axios
+//     .get(apiUrl)
+//     .then((market) => {
+//       //1 min lag for live data
+//       if (market.data["Time Series (Daily)"]) {
+//         const symbolData = market.data["Time Series (Daily)"];
+//         res.status("200").send(symbolData);
+//         cache.setex(req.url, 60, JSON.stringify(symbolData));
+//       } else {
+//         res.status("404").send("ERROR: Invalid symbol. Cannot find stock data");
+//       }
+//     })
+//     .catch((err) => console.log(err));
+// });
+
+const baseUrl = "https://financialmodelingprep.com/api/v3/quote/";
 
 app.get("/marketData/:symbol", getFromCache, (req, res) => {
-  const functionApi = "TIME_SERIES_INTRADAY";
-  const apiUrl = `${baseUrl}${functionApi}&symbol=${req.params.symbol}&interval=1min&apikey=${apiKey}`;
   axios
-    .get(apiUrl)
-    .then((market) => {
-      //1 min lag for live data
-      if (market.data["Time Series (1min)"]) {
-        const symbolData = market.data["Time Series (1min)"];
-        const latestSymbolData = symbolData[Object.keys(symbolData)[0]];
-        res.status("200").send(latestSymbolData);
-        cache.setex(req.url, 60, JSON.stringify(latestSymbolData));
-      } else {
-        res.status("404").send("ERROR: Invalid symbol. Cannot find stock data");
-      }
-    })
-    .catch((err) => console.log(err));
-});
-
-app.get("/marketData/history/:symbol", getFromCache, (req, res) => {
-  const functionApi = "TIME_SERIES_DAILY";
-  const apiUrl = `${baseUrl}${functionApi}&symbol=${req.params.symbol}&apikey=${apiKey}`;
-
-  axios
-    .get(apiUrl)
-    .then((market) => {
-      //1 min lag for live data
-      if (market.data["Time Series (Daily)"]) {
-        const symbolData = market.data["Time Series (Daily)"];
-        res.status("200").send(symbolData);
-        cache.setex(req.url, 60, JSON.stringify(symbolData));
+    .get(`${baseUrl}^${req.params.symbol}`)
+    .then((response) => {
+      const data = response.data;
+      if (data.length > 0) {
+        res.status("200").send(data);
+        cache.setex(req.url, 60, JSON.stringify(data));
       } else {
         res.status("404").send("ERROR: Invalid symbol. Cannot find stock data");
       }
