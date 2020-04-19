@@ -186,11 +186,26 @@ app.get("/stock", getFromCache, (req, res) => {
 //     .catch((err) => console.log(err));
 // });
 
-const baseUrl = "https://financialmodelingprep.com/api/v3/quote/";
+const baseUrl = "https://financialmodelingprep.com/api/v3/";
 
 app.get("/marketData/:symbol", getFromCache, (req, res) => {
   axios
-    .get(`${baseUrl}^${req.params.symbol}`)
+    .get(`${baseUrl}quote/^${req.params.symbol}`)
+    .then((response) => {
+      const data = response.data;
+      if (data.length > 0) {
+        res.status("200").send(data);
+        cache.setex(req.url, 60, JSON.stringify(data));
+      } else {
+        res.status("404").send("ERROR: Invalid symbol. Cannot find stock data");
+      }
+    })
+    .catch((err) => console.log(err));
+});
+
+app.get("/marketData/history/:symbol", getFromCache, (req, res) => {
+  axios
+    .get(`${baseUrl}historical-chart/1min/^${req.params.symbol}`)
     .then((response) => {
       const data = response.data;
       if (data.length > 0) {
