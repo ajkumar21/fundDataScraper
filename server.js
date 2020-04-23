@@ -1,9 +1,11 @@
 const bodyParser = require("body-parser");
-var express = require("express");
 var scraper = require("./scraper");
 const MongoClient = require("mongodb").MongoClient;
 const redis = require("redis");
 const axios = require("axios");
+const app = require("express")();
+const http = require("http").Server(app);
+const io = require("socket.io")(http);
 
 const port = process.env.REDIS_PORT;
 const host = process.env.REDIS_HOST;
@@ -16,7 +18,10 @@ cache.on("error", (err) => console.log(`Redis connection failed: ${err}`));
 
 const TIME_IN_CACHE = 60 * 60; //1hr in seconds
 
-var app = express();
+var server = http.listen(process.env.PORT || 8080, function () {
+  var port = server.address().port;
+  console.log("App now running on port", port);
+});
 
 app.use(
   bodyParser.urlencoded({
@@ -103,11 +108,6 @@ MongoClient.connect(connectionString, {
   })
   .catch((err) => console.error(`MongoDB connection failed: ${err}`));
 
-var server = app.listen(process.env.PORT || 8080, function () {
-  var port = server.address().port;
-  console.log("App now running on port", port);
-});
-
 app.get("/fund", getFromCache, (req, res) => {
   if (req.headers["link"]) {
     const fundLink = req.headers.link;
@@ -145,47 +145,6 @@ app.get("/stock", getFromCache, (req, res) => {
   }
 });
 
-// const baseUrl = "https://www.alphavantage.co/query?function=";
-// const apiKey = process.env.MARKET_API_KEY;
-
-// app.get("/marketData/:symbol", getFromCache, (req, res) => {
-//   const functionApi = "TIME_SERIES_INTRADAY";
-//   const apiUrl = `${baseUrl}${functionApi}&symbol=${req.params.symbol}&interval=1min&apikey=${apiKey}`;
-//   axios
-//     .get(apiUrl)
-//     .then((market) => {
-//       //1 min lag for live data
-//       if (market.data["Time Series (1min)"]) {
-//         const symbolData = market.data["Time Series (1min)"];
-//         const latestSymbolData = symbolData[Object.keys(symbolData)[0]];
-//         res.status("200").send(latestSymbolData);
-//         cache.setex(req.url, 60, JSON.stringify(latestSymbolData));
-//       } else {
-//         res.status("404").send("ERROR: Invalid symbol. Cannot find stock data");
-//       }
-//     })
-//     .catch((err) => console.log(err));
-// });
-
-// app.get("/marketData/history/:symbol", getFromCache, (req, res) => {
-//   const functionApi = "TIME_SERIES_DAILY";
-//   const apiUrl = `${baseUrl}${functionApi}&symbol=${req.params.symbol}&apikey=${apiKey}`;
-
-//   axios
-//     .get(apiUrl)
-//     .then((market) => {
-//       //1 min lag for live data
-//       if (market.data["Time Series (Daily)"]) {
-//         const symbolData = market.data["Time Series (Daily)"];
-//         res.status("200").send(symbolData);
-//         cache.setex(req.url, 60, JSON.stringify(symbolData));
-//       } else {
-//         res.status("404").send("ERROR: Invalid symbol. Cannot find stock data");
-//       }
-//     })
-//     .catch((err) => console.log(err));
-// });
-
 const baseUrl = "https://financialmodelingprep.com/api/v3/";
 
 app.get("/marketData/:symbol", getFromCache, (req, res) => {
@@ -216,4 +175,41 @@ app.get("/marketData/history/:symbol", getFromCache, (req, res) => {
       }
     })
     .catch((err) => console.log(err));
+});
+
+async function getIndicies(indices) {
+  let promises = [];
+
+  indices.forEach((index) => {
+    console.log(index);
+    promises.push(axios.get(`${baseUrl}quote/^${index}`));
+  });
+
+  const res = await Promise.all(promises);
+
+  const response = res.map((r) => r.data[0]);
+
+  return response;
+}
+
+var list = [];
+var users = 0;
+io.on("connection", (socket) => {
+  users++;
+  console.log("user is connected. user count: ", users);
+  socket.on("updateList", (reqList) => {
+    list = reqList;
+    console.log("list: ", list);
+  });
+
+  socket.on("getLiveData", () => {
+    setInterval(() => {
+      getIndicies(list).then((res) => {
+        console.log(res);
+        socket.emit("liveData", res);
+      });
+    }, 10000);
+  });
+
+  socket.on("disconnect", () => console.log("Client disconnected"));
 });
