@@ -187,7 +187,13 @@ async function getIndicies(indices) {
 
   const res = await Promise.all(promises);
 
-  const response = res.map((r) => r.data[0]);
+  let response = {};
+
+  res.forEach((r) => {
+    const data = r.data[0];
+    response[data.name] = data;
+  });
+  console.log(response);
 
   return response;
 }
@@ -208,8 +214,12 @@ io.on("connection", (socket) => {
         console.log(res);
         socket.emit("liveData", res);
       });
-    }, 10000);
+    }, 20000);
   });
 
-  socket.on("disconnect", () => console.log("Client disconnected"));
+  socket.on("disconnect", () => {
+    console.log("Client disconnected");
+    users--;
+    console.log("user is connected. user count: ", users);
+  });
 });
