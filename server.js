@@ -214,7 +214,7 @@ io.on("connection", (socket) => {
         console.log(res);
         socket.emit("liveData", res);
       });
-    }, 20000);
+    }, 10000);
   });
 
   socket.on("disconnect", () => {
