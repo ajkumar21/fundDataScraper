@@ -181,7 +181,7 @@ async function getIndicies(indices) {
   let promises = [];
 
   indices.forEach((index) => {
-    console.log(index);
+    // console.log(index);
     promises.push(axios.get(`${baseUrl}quote/^${index}`));
   });
 
@@ -193,13 +193,22 @@ async function getIndicies(indices) {
     const data = r.data[0];
     response[data.name] = data;
   });
-  console.log(response);
+  // console.log(response);
 
   return response;
 }
 
+async function getHistoricalData(index) {
+  console.log("here ", index);
+  const historyData = await axios
+    .get(`${baseUrl}historical-chart/1min/^${index}`)
+    .catch((err) => console.log("error on get: ", err));
+  return historyData.data;
+}
+
 var list = [];
 var users = 0;
+var openModal = "";
 io.on("connection", (socket) => {
   users++;
   console.log("user is connected. user count: ", users);
@@ -211,10 +220,24 @@ io.on("connection", (socket) => {
   socket.on("getLiveData", () => {
     setInterval(() => {
       getIndicies(list).then((res) => {
-        console.log(res);
+        // console.log(res);
         socket.emit("liveData", res);
       });
     }, 10000);
+  });
+
+  socket.on("updateOpenModal", (openModalIdx) => {
+    openModal = openModalIdx;
+    if (openModal !== "") {
+      console.log("openModal: ", openModal);
+      setInterval(() => {
+        getHistoricalData(openModal).then((res) => {
+          console.log(res);
+          console.log("historyDAta");
+          socket.emit("liveHistoricalData", res);
+        });
+      }, 60000);
+    }
   });
 
   socket.on("disconnect", () => {
